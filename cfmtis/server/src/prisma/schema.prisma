@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OFFICER
+  VIEWER
+}
+
+enum CaseStatus {
+  ACTIVE
+  PENDING
+  CLOSED
+  ARCHIVED
+}
+
+enum AnalysisStatus {
+  PENDING
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum RiskLevel {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum AlertType {
+  FRAGMENTATION
+  VELOCITY
+  LOCATION
+  NEW_ACCOUNT
+  CASH_OUT
+}
+
+enum AlertSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model Officer {
+  id            String         @id @default(cuid())
+  badgeNumber   String         @unique
+  name          String
+  rank          String
+  department    String
+  passwordHash  String
+  role          Role           @default(OFFICER)
+  cases         Case[]
+  freezeActions FreezeAction[]
+  createdAt     DateTime       @default(now())
+}
+
+model Case {
+  id             String          @id @default(cuid())
+  complaintId    String          @unique
+  fraudType      String
+  fraudAmount    Float
+  victimAccount  String
+  victimName     String
+  victimMobile   String
+  bankName       String
+  fraudTimestamp DateTime
+  description    String
+  status         CaseStatus      @default(ACTIVE)
+  analysisStatus AnalysisStatus  @default(PENDING)
+  officer        Officer         @relation(fields: [officerId], references: [id])
+  officerId      String
+  files          UploadedFile[]
+  accounts       TracedAccount[]
+  transactions   Transaction[]
+  withdrawals    Withdrawal[]
+  holds          HoldAction[]
+  bankActions    BankAction[]
+  analysis       CaseAnalysis?
+  patternAlerts  PatternAlert[]
+  freezeActions  FreezeAction[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model Transaction {
+  id              String   @id @default(cuid())
+  acknowledgementNo String?
+  txnId           String
+  senderAccount   String
+  receiverAccount String
+  amount          Float
+  timestamp       DateTime
+  txnType         String
+  status          String
+  referenceId     String?
+  sourceSheet     String?
+  layerLevel      Int?
+  senderBankName  String?
+  receiverBankName String?
+  senderIfsc      String?
+  receiverIfsc    String?
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId          String
+}
+
+model TracedAccount {
+  id                  String    @id @default(cuid())
+  accountNumber       String
+  holderName          String
+  bankName            String
+  currentBalance      Float
+  amountReceived      Float
+  chainDepth          Int
+  riskScore           Float
+  riskLevel           RiskLevel
+  accountStatus       String
+  isFrozen            Boolean   @default(false)
+  createdDaysAgo      Int?
+  location            String?
+  transactionVelocity Int?
+  fragmentationScore  Float?
+  case                Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId              String
+}
+
+model FreezeAction {
+  id            String   @id @default(cuid())
+  accountNumber String
+  officerId     String
+  officer       Officer  @relation(fields: [officerId], references: [id])
+  caseId        String
+  case          Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  timestamp     DateTime @default(now())
+  note          String?
+}
+
+model PatternAlert {
+  id       String        @id @default(cuid())
+  type     AlertType
+  severity AlertSeverity
+  message  String
+  caseId   String
+  case     Case          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model UploadedFile {
+  id         String   @id @default(cuid())
+  filename   String
+  fileType   String
+  sizeMb     Float
+  storageKey String?
+  content    Bytes?
+  caseId     String
+  case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Withdrawal {
+  id                String   @id @default(cuid())
+  acknowledgementNo String
+  withdrawalType    String
+  amount            Float
+  timestamp         DateTime?
+  accountNumber     String?
+  location          String?
+  atmTerminalId     String?
+  deviceId          String?
+  referenceId       String?
+  sourceSheet       String
+  highRiskFlag      Boolean  @default(false)
+  bankId            String?
+  bank              Bank?    @relation(fields: [bankId], references: [id])
+  caseId            String
+  case              Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model HoldAction {
+  id                String   @id @default(cuid())
+  acknowledgementNo String
+  actionType        String
+  amount            Float?
+  timestamp         DateTime?
+  status            String?
+  remarks           String?
+  sourceSheet       String
+  bankId            String?
+  bank              Bank?    @relation(fields: [bankId], references: [id])
+  caseId            String
+  case              Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model BankAction {
+  id                String   @id @default(cuid())
+  acknowledgementNo String
+  actionType        String
+  status            String?
+  responseTimeHours Float?
+  timestamp         DateTime?
+  remarks           String?
+  sourceSheet       String
+  bankId            String?
+  bank              Bank?    @relation(fields: [bankId], references: [id])
+  caseId            String
+  case              Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Bank {
+  id          String        @id @default(cuid())
+  name        String
+  ifsc        String?
+  withdrawals Withdrawal[]
+  holds       HoldAction[]
+  actions     BankAction[]
+  createdAt   DateTime      @default(now())
+
+  @@unique([name, ifsc])
+}
+
+model CaseAnalysis {
+  id                    String   @id @default(cuid())
+  acknowledgementNo     String   @unique
+  totalAmount           Float
+  layers                Json
+  banksInvolved         Json
+  moneyTrail            Json
+  timeline              Json
+  withdrawalIntelligence Json
+  recovery              Json
+  risk                  Json
+  patternInsights       Json
+  bankInsights          Json
+  caseId                String   @unique
+  case                  Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}

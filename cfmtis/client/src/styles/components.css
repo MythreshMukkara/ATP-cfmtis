@@ -1,0 +1,56 @@
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  font-family: "IBM Plex Sans Condensed", sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+}
+
+.section-header::before {
+  content: "";
+  width: 3px;
+  height: 14px;
+  background: var(--accent-cyan);
+}
+
+.panel-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 249, 252, 0.98));
+  box-shadow:
+    0 12px 34px rgba(22, 48, 67, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.risk-bar {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(138, 153, 168, 0.22);
+}
+
+.risk-bar > span {
+  display: block;
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.count-up {
+  animation: pulse-number 1.4s ease;
+}
+
+@keyframes pulse-number {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
